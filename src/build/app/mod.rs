@@ -1446,18 +1446,20 @@ impl<'b> App<'b> {
             }
         }
 
-        for ag in self.groups.iter().filter(|ag| ag.r_unless.is_some()) {
-            for a in ag.args.iter() {
-                for r_unless in ag.r_unless.as_ref().unwrap().iter() {
-                    let a2 = self.args.remove_by_name(*a).unwrap();
-                    let r = self
-                        .args
-                        .args
-                        .iter()
-                        .find(|arg| arg.id == *r_unless)
-                        .unwrap()
-                        .name;
-                    self.args.push(a2.required_unless(r));
+        for ag in self.groups.iter() {
+            if let Some(r_unless) = ag.r_unless.as_ref() {
+                for arg_id in ag.args.iter() {
+                    for unless_arg_id in r_unless.iter() {
+                        let a2 = self.args.remove_by_name(*arg_id).unwrap();
+                        let unless_arg_name = self
+                            .args
+                            .args
+                            .iter()
+                            .find(|arg| arg.id == *unless_arg_id)
+                            .unwrap()
+                            .name;
+                        self.args.push(a2.required_unless(unless_arg_name));
+                    }
                 }
             }
         }
