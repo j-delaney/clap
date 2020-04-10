@@ -266,6 +266,22 @@ fn required_unless_arg_group_err() {
 }
 
 #[test]
+fn required_unless_group_hydration_err() {
+    let res = App::new("req_unless_group_test")
+        .arg(Arg::with_name("key-file").takes_value(true))
+        .arg(
+            Arg::with_name("password")
+                .takes_value(true)
+                .group("login-details"),
+        )
+        .group(ArgGroup::with_name("login-details").required_unless("key-file"))
+        .try_get_matches_from(vec![""]);
+
+    assert!(res.is_err());
+    assert_eq!(res.unwrap_err().kind, ErrorKind::MissingRequiredArgument);
+}
+
+#[test]
 fn required_unless_err() {
     let res = App::new("unlesstest")
         .arg(
