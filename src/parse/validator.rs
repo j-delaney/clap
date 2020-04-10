@@ -587,8 +587,21 @@ impl<'b, 'c, 'z> Validator<'b, 'c, 'z> {
             .filter(|a| !matcher.contains(a.id))
         {
             debugln!("Validator::validate_required_unless:iter:{};", a.name);
-            if self.fails_arg_required_unless(a, matcher) {
+            if self.fails_arg_required_unless(a, &a.r_unless, matcher) {
                 return self.missing_required_error(matcher, Some(a.id));
+            }
+        }
+
+        for ag in self.p.app.groups.iter().filter(|ag| ag.r_unless.is_some()) {
+            debugln!(
+                "Validator::validate_required_unless:group:iter:{};",
+                ag.name
+            );
+            for arg_id in ag.args.iter().filter(|arg_id| !matcher.contains(**arg_id)) {
+                let arg = self.p.app.args.get_by_id(arg_id).expect(INTERNAL_ERROR_MSG);
+                if self.fails_arg_required_unless(arg, &ag.r_unless, matcher) {
+                    return self.missing_required_error(matcher, Some(arg.id));
+                }
             }
         }
 
@@ -596,11 +609,16 @@ impl<'b, 'c, 'z> Validator<'b, 'c, 'z> {
     }
 
     // Failing a required unless means, the arg's "unless" wasn't present, and neither were they
-    fn fails_arg_required_unless(&self, a: &Arg<'b>, matcher: &ArgMatcher) -> bool {
+    fn fails_arg_required_unless(
+        &self,
+        a: &Arg<'b>,
+        r_unless: &Option<Vec<Id>>,
+        matcher: &ArgMatcher,
+    ) -> bool {
         debugln!("Validator::fails_arg_required_unless: a={:?};", a.name);
         macro_rules! check {
             ($how:ident, $_self:expr, $a:ident, $m:ident) => {{
-                $a.r_unless
+                r_unless
                     .as_ref()
                     .map(|ru| !ru.iter().$how(|&n| $m.contains(n)))
                     .unwrap_or(false)

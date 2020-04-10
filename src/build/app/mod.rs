@@ -1002,6 +1002,19 @@ impl<'b> App<'b> {
         self
     }
 
+    // pub fn mut_arg_with_id<'a, F>(&'a mut self, key: Id, f: F) -> &'a Result<(), ()>
+    // where
+    //     F: FnOnce(Arg<'b>) -> Arg<'b>,
+    // {
+    //     match self.args.remove_by_name(key) {
+    //         None => &Err(()),
+    //         Some(a) => {
+    //             self.args.push(f(a));
+    //             &Ok(())
+    //         }
+    //     }
+    // }
+
     /// Prints the full help message to [`io::stdout()`] using a [`BufWriter`] using the same
     /// method as if someone ran `-h` to request the help message
     ///

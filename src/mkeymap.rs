@@ -94,6 +94,10 @@ impl<'b> MKeyMap<'b> {
     }
     //TODO ::get_first([KeyA, KeyB])
 
+    pub(crate) fn get_by_id(&self, id: &Id) -> Option<&Arg<'b>> {
+        self.args.iter().find(|arg| arg.id == *id)
+    }
+
     pub(crate) fn is_empty(&self) -> bool {
         self.keys.is_empty() && self.args.is_empty()
     }
@@ -122,6 +126,17 @@ impl<'b> MKeyMap<'b> {
             .position(|arg| arg.id == _name)
             .map(|i| self.args.swap_remove(i))
     }
+
+    // pub(crate) fn remove_by_key(&mut self, key: &KeyType) -> Option<Arg<'b>> {
+    //     if self.built {
+    //         panic!("Cannot remove args after being built");
+    //     }
+    //
+    //     self.keys
+    //         .iter()
+    //         .find(|k| k.key == *key)
+    //         .map(|k| self.args.swap_remove(k.index));
+    // }
 }
 
 fn _get_keys(arg: &Arg) -> Vec<KeyType> {
