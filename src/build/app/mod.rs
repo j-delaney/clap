@@ -1428,6 +1428,22 @@ impl<'b> App<'b> {
             self._arg_debug_asserts(a);
         }
 
+        for ag in self.groups.iter().filter(|ag| ag.r_unless.is_some()) {
+            for a in ag.args.iter() {
+                for r_unless in ag.r_unless.as_ref().unwrap().iter() {
+                    let a2 = self.args.remove_by_name(*a).unwrap();
+                    let r = self
+                        .args
+                        .args
+                        .iter()
+                        .find(|arg| arg.id == *r_unless)
+                        .unwrap()
+                        .name;
+                    self.args.push(a2.required_unless(r));
+                }
+            }
+        }
+
         let mut pos_counter = 1;
         for a in self.args.args.iter_mut() {
             // Fill in the groups

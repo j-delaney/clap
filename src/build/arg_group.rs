@@ -83,6 +83,7 @@ pub struct ArgGroup<'a> {
     pub(crate) args: Vec<Id>,
     pub(crate) required: bool,
     pub(crate) requires: Option<Vec<Id>>,
+    pub(crate) r_unless: Option<Vec<Id>>,
     pub(crate) conflicts: Option<Vec<Id>>,
     pub(crate) multiple: bool,
 }
@@ -346,6 +347,23 @@ impl<'a> ArgGroup<'a> {
         self
     }
 
+    /// This is documentation for this wow oh wow
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    ///
+    /// ```
+    pub fn required_unless<T: Key>(mut self, arg_id: T) -> Self {
+        let name = arg_id.key();
+        if let Some(ref mut vec) = self.r_unless {
+            vec.push(name);
+        } else {
+            self.r_unless = Some(vec![name]);
+        }
+        self
+    }
+
     /// Sets the exclusion rules of this group. Exclusion (aka conflict) rules function just like
     /// [argument exclusion rules], you can name other arguments or groups that must *not* be
     /// present when one of the arguments from this group are used.
@@ -444,6 +462,7 @@ impl<'a, 'z> From<&'z ArgGroup<'a>> for ArgGroup<'a> {
             name: g.name,
             required: g.required,
             args: g.args.clone(),
+            r_unless: g.r_unless.clone(),
             requires: g.requires.clone(),
             conflicts: g.conflicts.clone(),
             multiple: g.multiple,
@@ -626,6 +645,7 @@ impl<'a> Clone for ArgGroup<'a> {
             name: self.name,
             required: self.required,
             args: self.args.clone(),
+            r_unless: self.r_unless.clone(),
             requires: self.requires.clone(),
             conflicts: self.conflicts.clone(),
             multiple: self.multiple,
