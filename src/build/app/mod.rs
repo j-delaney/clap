@@ -1428,6 +1428,24 @@ impl<'b> App<'b> {
             self._arg_debug_asserts(a);
         }
 
+        for a in self.args.args.iter() {
+            // Fill in the groups
+            if let Some(ref grps) = a.groups {
+                for &g in grps {
+                    let mut found = false;
+                    if let Some(ag) = self.groups.iter_mut().find(|grp| grp.id == g) {
+                        ag.args.push(a.id);
+                        found = true;
+                    }
+                    if !found {
+                        let mut ag = ArgGroup::_with_id(g);
+                        ag.args.push(a.id);
+                        self.groups.push(ag);
+                    }
+                }
+            }
+        }
+
         for ag in self.groups.iter().filter(|ag| ag.r_unless.is_some()) {
             for a in ag.args.iter() {
                 for r_unless in ag.r_unless.as_ref().unwrap().iter() {
@@ -1446,22 +1464,6 @@ impl<'b> App<'b> {
 
         let mut pos_counter = 1;
         for a in self.args.args.iter_mut() {
-            // Fill in the groups
-            if let Some(ref grps) = a.groups {
-                for &g in grps {
-                    let mut found = false;
-                    if let Some(ag) = self.groups.iter_mut().find(|grp| grp.id == g) {
-                        ag.args.push(a.id);
-                        found = true;
-                    }
-                    if !found {
-                        let mut ag = ArgGroup::_with_id(g);
-                        ag.args.push(a.id);
-                        self.groups.push(ag);
-                    }
-                }
-            }
-
             // Figure out implied settings
             if a.is_set(ArgSettings::Last) {
                 // if an arg has `Last` set, we need to imply DontCollapseArgsInUsage so that args
