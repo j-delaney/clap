@@ -368,14 +368,14 @@ impl<'a> ArgGroup<'a> {
     /// # use clap::{App, Arg, ArgGroup};
     /// let res = App::new("prog")
     ///     .arg(Arg::with_name("key-file").long("key-file").takes_value(true))
-    ///      .arg(Arg::with_name("username").long("username").takes_value(true))
-    ///      .arg(Arg::with_name("password").long("password").takes_value(true))
-    ///      .group(
+    ///     .arg(Arg::with_name("username").long("username").takes_value(true))
+    ///     .arg(Arg::with_name("password").long("password").takes_value(true))
+    ///     .group(
     ///         ArgGroup::with_name("login-details")
     ///             .args(&["username", "password"])
     ///             .required_unless("key-file"),
-    ///         )
-    ///      .try_get_matches_from(vec!["req_unless_group_test", "--key-file", "id_rsa"]);
+    ///     )
+    ///     .try_get_matches_from(vec!["req_unless_group_test", "--key-file", "id_rsa"]);
     ///
     /// assert!(res.is_ok());
     /// ```
@@ -461,8 +461,9 @@ impl<'a> ArgGroup<'a> {
     ///     .group(
     ///         ArgGroup::with_name("input-file")
     ///             .args(&["encoding", "path"])
-    ///             .required_unless_one(&["url", ""])
-    ///     ).try_get_matches_from(vec!["prog", "--url", "example.com"]);
+    ///             .required_unless_one(&["url", "no-input"])
+    ///     )
+    ///     .try_get_matches_from(vec!["prog", "--url", "example.com"]);
     ///
     /// assert!(res.is_ok());
     /// ```
