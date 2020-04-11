@@ -244,6 +244,85 @@ fn required_unless_err() {
     assert_eq!(res.unwrap_err().kind, ErrorKind::MissingRequiredArgument);
 }
 
+#[test]
+fn required_unless_arg_group() {
+    let res = App::new("req_unless_group_test")
+        .arg(
+            Arg::with_name("key-file")
+                .long("key-file")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("username")
+                .long("username")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("password")
+                .long("password")
+                .takes_value(true),
+        )
+        .group(
+            ArgGroup::with_name("login-details")
+                .args(&["username", "password"])
+                .required_unless("key-file"),
+        )
+        .try_get_matches_from(vec!["req_unless_group_test", "--key-file", "id_rsa"]);
+
+    assert!(res.is_ok());
+    let m = res.unwrap();
+    assert!(m.is_present("key-file"));
+    assert!(!m.is_present("username"));
+    assert!(!m.is_present("password"));
+}
+
+#[test]
+fn required_unless_arg_group_err() {
+    let res = App::new("req_unless_group_test")
+        .arg(
+            Arg::with_name("key-file")
+                .long("key-file")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("username")
+                .long("username")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("password")
+                .long("password")
+                .takes_value(true),
+        )
+        .group(
+            ArgGroup::with_name("login-details")
+                .args(&["username", "password"])
+                .required_unless("key-file"),
+        )
+        .try_get_matches_from(vec!["req_unless_group_test", "--username", "admin"]);
+
+    assert!(res.is_err());
+    assert_eq!(res.unwrap_err().kind, ErrorKind::MissingRequiredArgument);
+}
+
+#[test]
+fn required_unless_group_hydration_err() {
+    // This tests that `required_unless` still works when the argument lists itself as being
+    // part of the group, rather than the group listing the argument as belonging to it.
+    let res = App::new("req_unless_group_test")
+        .arg(Arg::with_name("key-file").takes_value(true))
+        .arg(
+            Arg::with_name("password")
+                .takes_value(true)
+                .group("login-details"),
+        )
+        .group(ArgGroup::with_name("login-details").required_unless("key-file"))
+        .try_get_matches_from(vec!["req_unless_group_test"]);
+
+    assert!(res.is_err());
+    assert_eq!(res.unwrap_err().kind, ErrorKind::MissingRequiredArgument);
+}
+
 // REQUIRED_UNLESS_ALL
 
 #[test]
@@ -278,6 +357,46 @@ fn required_unless_all_err() {
         .arg(Arg::with_name("dbg").long("debug"))
         .arg(Arg::with_name("infile").short('i').takes_value(true))
         .try_get_matches_from(vec!["unlessall", "--debug"]);
+
+    assert!(res.is_err());
+    assert_eq!(res.unwrap_err().kind, ErrorKind::MissingRequiredArgument);
+}
+
+#[test]
+fn required_unless_all_arg_group() {
+    let res = App::new("unlessall_group")
+        .group(
+            ArgGroup::with_name("key-details")
+                .args(&["key-file", "key-type"])
+                .required_unless_all(&["username", "password"]),
+        )
+        .arg(Arg::with_name("key-file").long("key-file"))
+        .arg(Arg::with_name("key-type").long("key-type"))
+        .arg(Arg::with_name("username").long("username"))
+        .arg(Arg::with_name("password").long("password"))
+        .try_get_matches_from(vec!["unlessall_group", "--username", "--password"]);
+
+    assert!(res.is_ok());
+    let m = res.unwrap();
+    assert!(m.is_present("username"));
+    assert!(m.is_present("password"));
+    assert!(!m.is_present("key-file"));
+    assert!(!m.is_present("key-type"));
+}
+
+#[test]
+fn required_unless_all_arg_group_err() {
+    let res = App::new("unlessall_group")
+        .group(
+            ArgGroup::with_name("key-details")
+                .args(&["key-file", "key-type"])
+                .required_unless_all(&["username", "password"]),
+        )
+        .arg(Arg::with_name("key-file").long("key-file"))
+        .arg(Arg::with_name("key-type").long("key-type"))
+        .arg(Arg::with_name("username").long("username"))
+        .arg(Arg::with_name("password").long("password"))
+        .try_get_matches_from(vec!["unlessall_group", "--username"]);
 
     assert!(res.is_err());
     assert_eq!(res.unwrap_err().kind, ErrorKind::MissingRequiredArgument);
@@ -414,6 +533,45 @@ fn required_unless_one_err() {
         .arg(Arg::with_name("dbg").long("debug"))
         .arg(Arg::with_name("infile").short('i').takes_value(true))
         .try_get_matches_from(vec!["unlessone"]);
+
+    assert!(res.is_err());
+    assert_eq!(res.unwrap_err().kind, ErrorKind::MissingRequiredArgument);
+}
+
+#[test]
+fn required_unless_one_arg_group() {
+    let res = App::new("unlessone-arg-group")
+        .group(
+            ArgGroup::with_name("login-details")
+                .args(&["username", "password"])
+                .required_unless_one(&["key-file", "no-auth"]),
+        )
+        .arg(Arg::with_name("username").long("username"))
+        .arg(Arg::with_name("password").long("password"))
+        .arg(Arg::with_name("key-file").long("key-file"))
+        .arg(Arg::with_name("no-auth").long("no-auth"))
+        .try_get_matches_from(vec!["unlessone-arg-group", "--key-file"]);
+
+    assert!(res.is_ok());
+    let m = res.unwrap();
+    assert!(m.is_present("key-file"));
+    assert!(!m.is_present("username"));
+    assert!(!m.is_present("password"));
+}
+
+#[test]
+fn required_unless_one_arg_group_err() {
+    let res = App::new("unlessone-arg-group-err")
+        .group(
+            ArgGroup::with_name("login-details")
+                .args(&["username", "password"])
+                .required_unless_one(&["key-file", "no-auth"]),
+        )
+        .arg(Arg::with_name("username").long("username"))
+        .arg(Arg::with_name("password").long("password"))
+        .arg(Arg::with_name("key-file").long("key-file"))
+        .arg(Arg::with_name("no-auth").long("no-auth"))
+        .try_get_matches_from(vec!["unlessone-arg-group-err", "--username"]);
 
     assert!(res.is_err());
     assert_eq!(res.unwrap_err().kind, ErrorKind::MissingRequiredArgument);

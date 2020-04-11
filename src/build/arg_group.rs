@@ -83,6 +83,8 @@ pub struct ArgGroup<'a> {
     pub(crate) args: Vec<Id>,
     pub(crate) required: bool,
     pub(crate) requires: Option<Vec<Id>>,
+    pub(crate) r_unless: Option<Vec<Id>>,
+    pub(crate) required_unless_all: bool,
     pub(crate) conflicts: Option<Vec<Id>>,
     pub(crate) multiple: bool,
 }
@@ -346,6 +348,140 @@ impl<'a> ArgGroup<'a> {
         self
     }
 
+    /// Sets an arg that override the required setting of the args in this group. (i.e. the args
+    /// will be required unless this other argument is present). Behaves the same as calling
+    /// [`Arg::required_unless`] on each arg in this group.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use clap::ArgGroup;
+    /// ArgGroup::with_name("config")
+    ///     .required_unless("debug");
+    /// ```
+    ///
+    /// Setting [`ArgGroup::required_unless(name)`] requires that the arguments in this group be
+    /// used at runtime *unless* `name` is present. In the following example, not all the arguments
+    /// in the group are provided, but it's not an error because the `unless` arg has been supplied.
+    ///
+    /// ```rust
+    /// # use clap::{App, Arg, ArgGroup};
+    /// let res = App::new("prog")
+    ///     .arg(Arg::with_name("key-file").long("key-file").takes_value(true))
+    ///      .arg(Arg::with_name("username").long("username").takes_value(true))
+    ///      .arg(Arg::with_name("password").long("password").takes_value(true))
+    ///      .group(
+    ///         ArgGroup::with_name("login-details")
+    ///             .args(&["username", "password"])
+    ///             .required_unless("key-file"),
+    ///         )
+    ///      .try_get_matches_from(vec!["req_unless_group_test", "--key-file", "id_rsa"]);
+    ///
+    /// assert!(res.is_ok());
+    /// ```
+    ///
+    /// [`Arg::required_unless`]: ./struct.Arg.html#method.required_unless
+    /// [`ArgGroup::required_unless(name)`]: ./struct.ArgGroup.html#method.required_unless
+    pub fn required_unless<T: Key>(mut self, arg_id: T) -> Self {
+        let name = arg_id.key();
+        if let Some(ref mut vec) = self.r_unless {
+            vec.push(name);
+        } else {
+            self.r_unless = Some(vec![name]);
+        }
+        self
+    }
+
+    /// Sets args that override the required setting of the args in this group. (i.e. this arg will
+    /// be required unless all these other arguments are present). Behaves the same as calling
+    /// [`Arg::required_unless_all`] on each arg in this group.
+    ///
+    /// **NOTE:** If you wish for this argument to only be required if *one of* these args are
+    /// present see [`ArgGroup::required_unless_one`]
+    ///
+    /// # Examples
+    ///
+    /// Setting [`ArgGroup::required_unless_all(names)`] requires that the arguments in the group
+    /// be used at runtime *unless* *all* the args in `names` are present. In the following example,
+    /// the required arguments in the group are *not* provided, but it's not an error because all
+    /// the `unless` args have been supplied.
+    ///
+    /// ```rust
+    /// # use clap::{App, Arg, ArgGroup};
+    /// let res = App::new("prog")
+    ///     .arg(Arg::with_name("key-file").long("key-file").takes_value(true))
+    ///     .arg(Arg::with_name("key-type").long("key-type").takes_value(true))
+    ///     .arg(Arg::with_name("username").long("username").takes_value(true))
+    ///     .arg(Arg::with_name("password").long("password").takes_value(true))
+    ///     .group(
+    ///         ArgGroup::with_name("login-details")
+    ///             .args(&["username", "password"])
+    ///             .required_unless_all(&["key-file", "key-type"])
+    ///     )
+    ///     .try_get_matches_from(vec!["prog", "--key-file", "id_rsa", "--key-type", "rsa"]);
+    ///
+    /// assert!(res.is_ok());
+    /// ```
+    /// [`Arg::required_unless_all`]: ./struct.Arg.html#method.required_unless_all
+    /// [`ArgGroup::required_unless_one`]: ./struct.ArgGroup.html#method.required_unless_one
+    /// [`ArgGroup::required_unless_all(names)`]: ./struct.ArgGroup.html#method.required_unless_all
+    pub fn required_unless_all(mut self, names: &[&str]) -> Self {
+        if let Some(ref mut vec) = self.r_unless {
+            for s in names {
+                vec.push(s.key());
+            }
+        } else {
+            self.r_unless = Some(names.iter().map(Key::key).collect());
+        }
+        self.required_unless_all = true;
+        self
+    }
+
+    /// Sets args that override the [required] setting of the args in this group. (i.e. this arg
+    /// will be required unless *at least one of* these other arguments are present). Behaves the
+    /// same as calling [`Arg::required_unless_one`] on each arg in this group.
+    ///
+    /// **NOTE:** If you wish for this argument to only be required if *all of* these args are
+    /// present see [`ArgGroup::required_unless_all`]
+    ///
+    /// # Examples
+    ///
+    /// Setting [`ArgGroup::required_unless_one(names)`] requires that the arguments in the group be
+    /// used at runtime *unless* *at least one of* the args in `names` are present. In the following
+    /// example, the arguments in the group are *not* provided, but it's not an error because one of
+    /// the `unless` args have been supplied.
+    ///
+    /// ```rust
+    /// # use clap::{App, Arg, ArgGroup};
+    /// let res = App::new("prog")
+    ///     .arg(Arg::with_name("no-input").long("no-input"))
+    ///     .arg(Arg::with_name("url").long("url").takes_value(true))
+    ///     .arg(Arg::with_name("encoding").long("encoding").takes_value(true))
+    ///     .arg(Arg::with_name("path").long("path").takes_value(true))
+    ///     .group(
+    ///         ArgGroup::with_name("input-file")
+    ///             .args(&["encoding", "path"])
+    ///             .required_unless_one(&["url", ""])
+    ///     ).try_get_matches_from(vec!["prog", "--url", "example.com"]);
+    ///
+    /// assert!(res.is_ok());
+    /// ```
+    ///
+    /// [required]: ./struct.Arg.html#method.required
+    /// [`Arg::required_unless_one`]: ./struct.Arg.html#method.required_unless_one
+    /// [`ArgGroup::required_unless_all`]: ./struct.ArgGroup.html#method.required_unless_all
+    /// [`ArgGroup::required_unless_one(names)`]: ./struct.ArgGroup.html#method.required_unless_one
+    pub fn required_unless_one(mut self, names: &[&str]) -> Self {
+        if let Some(ref mut vec) = self.r_unless {
+            for s in names {
+                vec.push(s.key());
+            }
+        } else {
+            self.r_unless = Some(names.iter().map(Key::key).collect());
+        }
+        self
+    }
+
     /// Sets the exclusion rules of this group. Exclusion (aka conflict) rules function just like
     /// [argument exclusion rules], you can name other arguments or groups that must *not* be
     /// present when one of the arguments from this group are used.
@@ -444,6 +580,8 @@ impl<'a, 'z> From<&'z ArgGroup<'a>> for ArgGroup<'a> {
             name: g.name,
             required: g.required,
             args: g.args.clone(),
+            r_unless: g.r_unless.clone(),
+            required_unless_all: g.required_unless_all.clone(),
             requires: g.requires.clone(),
             conflicts: g.conflicts.clone(),
             multiple: g.multiple,
@@ -626,6 +764,8 @@ impl<'a> Clone for ArgGroup<'a> {
             name: self.name,
             required: self.required,
             args: self.args.clone(),
+            r_unless: self.r_unless.clone(),
+            required_unless_all: self.required_unless_all.clone(),
             requires: self.requires.clone(),
             conflicts: self.conflicts.clone(),
             multiple: self.multiple,
